@@ -1,0 +1,2 @@
+a_non_negative_int
+a_negative_int

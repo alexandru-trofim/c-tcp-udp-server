@@ -56,6 +56,7 @@ int main (int argc, char* argv[]) {
     //add tcp udp sockets to poll file descriptors
     poll_file_descriptors.push_back({ tcp_socket, POLLIN, 0 }); // TCP socket
     poll_file_descriptors.push_back({ udp_socket, POLLIN, 0 }); // UDP socket
+    poll_file_descriptors.push_back({ STDIN_FILENO, POLLIN, 0 }); // Standard input
 
     while (true) {
 
@@ -82,13 +83,6 @@ int main (int argc, char* argv[]) {
                     poll_file_descriptors.push_back({ client_socket, POLLIN, 0 });
 
 
-
-
-
-
-
-
-
                 } else if (fd.fd == udp_socket) {
                     char buffer[1024];
                     struct sockaddr_in sender_addr;
@@ -96,8 +90,16 @@ int main (int argc, char* argv[]) {
                     int nbytes = recvfrom(udp_socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &sender_addrlen);
                     // aici ai primit un datagram UDP
                     cerr << buffer << '\n';
-                } else {
-
+                } else if (fd.fd == STDIN_FILENO){
+                    string input;
+                    getline(cin, input);
+                    if (!input.compare("exit")) {
+                        cout << "closing sockets" << "\n";
+                        close(tcp_socket);
+                        close(udp_socket);
+                        // free everything
+                        return 0;
+                    }
                 }
             } 
         }
@@ -105,7 +107,5 @@ int main (int argc, char* argv[]) {
 
     }
 
-    close(tcp_socket);
-    // close(udp_socket);
 
 }

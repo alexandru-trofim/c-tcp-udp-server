@@ -12,6 +12,7 @@ int main (int argc, char* argv[]) {
     struct sockaddr_in addr;
     vector<pollfd> poll_file_descriptors;
 
+
     // we deactivate the buffering for low latency
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
@@ -22,6 +23,12 @@ int main (int argc, char* argv[]) {
     if ((udp_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         die(__LINE__, "%s: Error while creating the upd_socket",argv[0]);
     }
+
+    int enable = 1;
+    if (setsockopt(tcp_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+        die(__LINE__, "%s: Error while creating the upd_socket",argv[0]);
+    if (setsockopt(udp_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+        die(__LINE__, "%s: Error while creating the upd_socket",argv[0]);
 
     if ((port = atoi(argv[1])) == 0) {
         die(__LINE__, "%s: Cannot convert cmd argument \"%s\" to port number", argv[0],argv[1]);
@@ -44,7 +51,7 @@ int main (int argc, char* argv[]) {
         die(__LINE__, "%s: Error listen tcp_socket",argv[0]);
     }
 
-    cout << port <<" tcp: "<< tcp_socket << " udp: "<< udp_socket <<  endl;
+    // cout << port <<" tcp: "<< tcp_socket << " udp: "<< udp_socket <<  endl;
 
     //add tcp udp sockets to poll file descriptors
     poll_file_descriptors.push_back({ tcp_socket, POLLIN, 0 }); // TCP socket

@@ -29,17 +29,28 @@ typedef struct Message {
 
 } Message;
 
-typedef struct Client {
+typedef struct User{
+    char id[10];
     pollfd file_descriptor;
-    string ID;
     vector<Message> messages_to_send;    
-    int status;
     map<string, int> followed_topics;
+    int status;
 
-} Client;
+} User;
 
+typedef struct ServerInfo {
+    uint16_t port;
+    int tcp_socket;
+    int udp_socket;
+    struct sockaddr_in addr;
+    vector<pollfd> poll_fds;
+    map<string, User> users;
+} ServerInfo;
 
 
 
 
 void die (int line_number, const char * format, ...);
+void setup_server(ServerInfo* server);
+User* find_user_by_id(ServerInfo* server, char*id);
+void handle_new_conn(ServerInfo* server);

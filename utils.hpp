@@ -14,6 +14,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <cstdarg>
+#include <string>
+#include <cmath>
+#include <netinet/tcp.h>
 
 using namespace std;
 
@@ -22,10 +25,10 @@ typedef struct Message {
     char topic[50];
     char id[10];
     uint32_t ip_udp_sender;
-    uint16_t len_msg;
     uint16_t port_udp_sender;
     uint8_t type_of_command;
-    uint8_t len_topic;
+    uint8_t sf;
+    uint8_t data_type;
 
 } Message;
 
@@ -49,8 +52,20 @@ typedef struct ServerInfo {
 
 
 
-
+/*Server's utils*/
 void die (int line_number, const char * format, ...);
 void setup_server(ServerInfo* server);
 User* find_user_by_id(ServerInfo* server, char*id);
 void handle_new_conn(ServerInfo* server);
+void exec_subscribe_action(ServerInfo* server, Message packet, int fd);
+void exec_unsubscribe_action(ServerInfo* server, Message packet, int fd);
+void exec_close_client(ServerInfo* server, int fd);
+void recv_udp_send_clients (ServerInfo* server);
+
+/*Client's utils*/
+void print_received_packet (Message packet);
+
+
+
+
+

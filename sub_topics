@@ -1,0 +1,4 @@
+subscribe a_non_negative_int 1
+subscribe float_seventeen 1
+subscribe a_negative_int 1
+subscribe a_larger_value 1

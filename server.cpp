@@ -10,6 +10,8 @@ int main (int argc, char* argv[]) {
     // we deactivate the buffering for low latency
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
     //do not forget to deactivate naggle algo
+    //
+    setbuf(stdout, NULL);
 
     //get port from arguments
     if ((server.port = atoi(argv[1])) == 0) {
@@ -23,85 +25,21 @@ int main (int argc, char* argv[]) {
             die(__LINE__, "Poll error");
         }
 
-        for (auto &fd : server.poll_fds) {
+        for (int i = 0; i < server.poll_fds.size(); ++i) {
+            pollfd fd = server.poll_fds[i];
+
             if (fd.revents & POLLIN) {
                 if (fd.fd == server.tcp_socket) {
-
                     handle_new_conn(&server);
-                    // socklen_t client_addrlen = sizeof(client_addr);
-
-                    // //if fills client_addr
-                    // int client_socket = accept(server.tcp_socket, (struct sockaddr *)&client_addr, &client_addrlen);
-
-                    // Message packet;
-                    // int nbytes = recvfrom(client_socket, &packet, sizeof(packet), 0, NULL, NULL);
-
-                    // // we have to check if the client with this id already exists
-                    // // if yes then we update its file descriptor and its status
-                    // if (server.users.find(packet.id) != server.users.end()) {
-                    //     //user already exists
-                    //     //check if user is active
-                    //     //if yes close client_socket
-                    //     //if no update the user socket
-                    //     User existing_user = server.users[packet.id];
-                    //     if (existing_user.status == 0) {
-                    //         //user is not active we should make him active update pollfd and add 
-                    //         // to pollfd vector
-                    //         existing_user.file_descriptor = { client_socket, POLLIN, 0 };
-                    //         existing_user.status = 1;
-                    //         server.poll_fds.push_back({ client_socket, POLLIN, 0 });
-
-                    //         cout << "New client " << existing_user.id 
-                    //             << " connected from "  
-                    //             << inet_ntoa(client_addr.sin_addr)
-                    //             << ":" << client_addr.sin_port << ".\n";
-                    //     } else {
-                    //         cout << "user exists and active\n";
-                    //     }
-                        
-                    // } else {
-                    //     //user does not exist
-                    //     //create new user
-                    //     User new_user;
-                    //     new_user.file_descriptor = { client_socket, POLLIN, 0 };
-                    //     strcpy(new_user.id, packet.id);
-                    //     new_user.status = 1;
-
-                    //     //add user to database
-                    //     server.users[new_user.id] = new_user;
-                    //     cout << "New client " << new_user.id 
-                    //         << " connected from "  
-                    //         << inet_ntoa(client_addr.sin_addr)
-                    //         << ":" << client_addr.sin_port << ".\n";
-
-                    //     server.poll_fds.push_back({ client_socket, POLLIN, 0 });
-                    // }
-
-                    // if (user == NULL) {
-                    //     cerr << "Trosha: this is a new client";
-                    //     //initialize new user 
-                    //     User new_user;
-                    //     new_user.file_descriptor = {client_socket, POLLIN, 0};
-                    //     strcpy(new_user.id, packet.id);
-                    //     new_user.status = 1;
-                    //     cout << "New client " << new_user.id 
-                    //         << " connected from "  
-                    //         << inet_ntoa(client_addr.sin_addr)
-                    //         << ":" << client_addr.sin_port << ".\n";
-                    // } else {
-                    //     cout << "user already exists\n";
-                    // }
-
-                    // aici ai acceptat o conexiune TCP
-
 
                 } else if (fd.fd == server.udp_socket) {
-                    char buffer[1024];
-                    struct sockaddr_in sender_addr;
-                    socklen_t sender_addrlen = sizeof(sender_addr);
-                    int nbytes = recvfrom(server.udp_socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &sender_addrlen);
-                    // aici ai primit un datagram UDP
-                    cerr << buffer << '\n';
+                    recv_udp_send_clients (&server);
+                    // char buffer[1024];
+                    // struct sockaddr_in sender_addr;
+                    // socklen_t sender_addrlen = sizeof(sender_addr);
+                    // int nbytes = recvfrom(server.udp_socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &sender_addrlen);
+                    // // aici ai primit un datagram UDP
+                    // cerr << buffer << '\n';
 
                 } else if (fd.fd == STDIN_FILENO){
                     string input;
@@ -113,6 +51,33 @@ int main (int argc, char* argv[]) {
                         //close all tcp clients
                         // free everything
                         return 0;
+                    }
+                } else {
+                    /*other tcp's*/
+                    Message packet;
+                    recv(fd.fd, &packet, sizeof(packet), 0);
+                    if (packet.type_of_command == 3) {
+                        /*subscribe command*/
+                        exec_subscribe_action(&server, packet, fd.fd);
+
+                    } else if (packet.type_of_command == 4) {
+                        exec_unsubscribe_action(&server, packet, fd.fd);
+                        
+                    } else if (packet.type_of_command == 5) {
+                        /*exit command from client*/
+                        //delete from pollfd
+                        close(fd.fd);
+                        //erase current fd entry
+                        for (auto it = server.users.begin(); it != server.users.end(); it++)
+                        {
+                            if (it->second.file_descriptor.fd == fd.fd) {
+                                it->second.status = 0;
+                                cout << "Client " << it->second.id << " disconnected.\n";
+                                break;
+                            }
+                        }
+                        server.poll_fds.erase(server.poll_fds.begin() + i);
+                        i--;
                     }
                 }
             } 

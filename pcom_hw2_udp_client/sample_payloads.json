@@ -5,7 +5,7 @@
 		"description":	"topic {a_negative_int} - type {INT} - value{-10}",
 		"payload_base64":	"YV9uZWdhdGl2ZV9pbnQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAo="
 	}, {
-		"description":	"topic {a_larger_value} - type {INT} - value{1234567890}",
+		"description":	"topic {a_larger_valua_larger_valuee} - type {INT} - value{1234567890}",
 		"payload_base64":	"YV9sYXJnZXJfdmFsdWUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEmWAtI="
 	}, {
 		"description":	"topic {a_large_negative_value} - type {INT} - value{-1234567890}",
@@ -29,7 +29,7 @@
 		"description":	"topic {float_minus_seventeen} - type {FLOAT} - value{-17}",
 		"payload_base64":	"ZmxvYXRfbWludXNfc2V2ZW50ZWVuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAQAAABEA"
 	}, {
-		"description":	"topic {a_strange_float} - type {FLOAT} - value{1234.4321}",
+		"description":	"topic {a_strange_floau} - type {FLOAT} - value{1234.4321}",
 		"payload_base64":	"YV9zdHJhbmdlX2Zsb2F0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAC8XAEE"
 	}, {
 		"description":	"topic {a_negative_strange_float} - type {FLOAT} - value{-1234.4321}",

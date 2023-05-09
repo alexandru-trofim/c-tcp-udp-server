@@ -450,6 +450,7 @@ def run_test_same_id(server):
     success = False
 
   if not outs.startswith("Client C1 already connected."):
+    print(outs)
     print("Error: server did not print that C1 is already connected")
     success = False
 

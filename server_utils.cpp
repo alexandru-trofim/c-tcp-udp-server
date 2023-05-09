@@ -19,6 +19,10 @@ void setup_server(ServerInfo* server) {
     if ((server->udp_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         die(__LINE__, "Error while creating the upd_socket");
     }
+    /*Deactivate Nagle's alogrithm*/
+    int flag = 1;
+    int result = setsockopt(server->tcp_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int));
+
     //make them reusable
     int enable = 1;
     if (setsockopt(server->tcp_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
@@ -54,24 +58,22 @@ void setup_server(ServerInfo* server) {
 
 void handle_new_conn(ServerInfo* server) {
 
-    struct sockaddr_in client_addr;
-    socklen_t client_addrlen = sizeof(client_addr);
+    Message      packet;
+    sockaddr_in  client_addr;
+    socklen_t    client_addrlen = sizeof(client_addr);
 
-    //if fills client_addr
-    int client_socket = accept(server->tcp_socket, (struct sockaddr *)&client_addr, &client_addrlen);
-
-    Message packet;
+    /*accept new conn and get the user's id*/
+    int client_socket = accept(server->tcp_socket, (sockaddr *)&client_addr, &client_addrlen);
     int nbytes = recvfrom(client_socket, &packet, sizeof(packet), 0, NULL, NULL);
 
-    // we have to check if the client with this id already exists
-    // if yes then we update its file descriptor and its status
+    /*Check if user already exists and/or is active*/
     if (server->users.find(packet.id) != server->users.end()) {
         User existing_user = server->users[packet.id];
 
         if (existing_user.status == 0) {
             /*User exists but not active; Update user*/
-            existing_user.file_descriptor = { client_socket, POLLIN, 0 };
-            existing_user.status = 1;
+            server->users[packet.id].file_descriptor = { client_socket, POLLIN, 0 };
+            server->users[packet.id].status = 1;
 
             cout << "New client " << existing_user.id 
                 << " connected from "  
@@ -86,6 +88,7 @@ void handle_new_conn(ServerInfo* server) {
 
             destroy_message.type_of_command = 1;
             send(client_socket,&destroy_message, sizeof(destroy_message), 0);
+            close(client_socket);
 
             cout << "Client " << existing_user.id << " already connected.";
         }
@@ -108,4 +111,89 @@ void handle_new_conn(ServerInfo* server) {
     }
 }
 
+void exec_subscribe_action(ServerInfo* server, Message packet, int fd) {
+    for (auto it = server->users.begin(); it != server->users.end(); ++it) {
+        if (it->second.file_descriptor.fd == fd) {
+            /*found the user we want to update subscription*/
+            string topic(packet.topic);
+            it->second.followed_topics.insert({topic, packet.sf});
+            // cout << "added topic " << topic << " with sf " <<  packet.sf <<"\n";
 
+            // cout << "showing user topics \n";
+            // for (auto i = it->second.followed_topics.begin(); i != it->second.followed_topics.end(); ++i) {
+            //     cout << i->first << " " << i->second << "\n";
+            // }
+            break;
+        }
+    }
+}
+
+void exec_unsubscribe_action(ServerInfo* server, Message packet, int fd) {
+    for (auto it = server->users.begin(); it != server->users.end(); ++it) {
+        User user = it->second;
+        if (user.file_descriptor.fd == fd) {
+            /*found the user we want to update subscription*/
+            string topic(packet.topic);
+            user.followed_topics.erase(topic);
+
+            // cout << "removed topic " << topic << " with sf " <<  packet.sf <<"\n";
+            // cout << "showing user topics \n";
+            // for (auto it = user.followed_topics.begin(); it != user.followed_topics.end(); ++it) {
+            //     cout << it->first << " " << it->second << "\n";
+            // }
+            break;
+        }
+    }
+}
+
+// void exec_close_client(ServerInfo* server, int fd) {
+//     for (auto it = server->users.begin(); it != server->users.end(); ++it) {
+//         User user = it->second;
+//         if (user.file_descriptor.fd == fd) {
+//             cout << "Client " << user.id << " disconnected.\n";
+//             server->users.erase(it->first);
+//             close(fd);
+//             break;
+//         }
+//     }
+// }
+
+void recv_udp_send_clients (ServerInfo* server) {
+    char buffer[1551];
+    char topic[50];
+    Message packet;
+    uint8_t type;
+    char msg[1500];
+
+    struct sockaddr_in sender_addr;
+    socklen_t sender_addrlen = sizeof(sender_addr);
+    int nbytes = recvfrom(server->udp_socket, buffer, 
+                          sizeof(buffer),
+                          0,
+                          (sockaddr *)&sender_addr,
+                          &sender_addrlen);
+
+    /*Setup packet we have to send*/
+    memset(&packet, 0, sizeof(packet));
+    strncpy(packet.topic, buffer, 50);
+    memcpy(packet.msg, buffer + 51, nbytes - 51);
+    packet.data_type = *(buffer + 50);
+    packet.ip_udp_sender = sender_addr.sin_addr.s_addr;
+    packet.port_udp_sender = sender_addr.sin_port;
+    packet.type_of_command = 2;
+
+    string string_topic(packet.topic);
+
+    for (auto it = server->users.begin(); it != server->users.end(); ++it) {
+        User user = it->second;
+        if (user.followed_topics.find(string_topic) != user.followed_topics.end()){
+            if (user.status == 1 ) {
+                send(user.file_descriptor.fd, &packet, sizeof(packet), 0);
+                //user active
+            } else if (user.status == 0 && user.followed_topics[string_topic] == 1) {
+                //store and forward
+            }
+        }
+    }
+
+}

@@ -34,12 +34,6 @@ int main (int argc, char* argv[]) {
 
                 } else if (fd.fd == server.udp_socket) {
                     recv_udp_send_clients (&server);
-                    // char buffer[1024];
-                    // struct sockaddr_in sender_addr;
-                    // socklen_t sender_addrlen = sizeof(sender_addr);
-                    // int nbytes = recvfrom(server.udp_socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &sender_addrlen);
-                    // // aici ai primit un datagram UDP
-                    // cerr << buffer << '\n';
 
                 } else if (fd.fd == STDIN_FILENO){
                     string input;
@@ -66,14 +60,13 @@ int main (int argc, char* argv[]) {
                     } else if (packet.type_of_command == 5) {
                         /*exit command from client*/
                         //delete from pollfd
-                        close(fd.fd);
                         //erase current fd entry
+                        close(fd.fd);
                         for (auto it = server.users.begin(); it != server.users.end(); it++)
                         {
                             if (it->second.file_descriptor.fd == fd.fd) {
                                 it->second.status = 0;
                                 cout << "Client " << it->second.id << " disconnected.\n";
-                                break;
                             }
                         }
                         server.poll_fds.erase(server.poll_fds.begin() + i);
@@ -81,6 +74,7 @@ int main (int argc, char* argv[]) {
                     }
                 }
             } 
+
         }
 
 

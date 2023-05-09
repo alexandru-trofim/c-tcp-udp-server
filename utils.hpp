@@ -61,6 +61,7 @@ void exec_subscribe_action(ServerInfo* server, Message packet, int fd);
 void exec_unsubscribe_action(ServerInfo* server, Message packet, int fd);
 void exec_close_client(ServerInfo* server, int fd);
 void recv_udp_send_clients (ServerInfo* server);
+void send_sf_messages (User* user);
 
 /*Client's utils*/
 void print_received_packet (Message packet);

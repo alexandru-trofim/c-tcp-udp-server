@@ -80,6 +80,8 @@ void handle_new_conn(ServerInfo* server) {
                 << inet_ntoa(client_addr.sin_addr)
                 << ":" << client_addr.sin_port << ".\n";
 
+            send_sf_messages(&server->users[packet.id]);
+
             server->poll_fds.push_back({ client_socket, POLLIN, 0 });
         } else {
             /*Telling illegal client to destroy itself*/
@@ -117,12 +119,7 @@ void exec_subscribe_action(ServerInfo* server, Message packet, int fd) {
             /*found the user we want to update subscription*/
             string topic(packet.topic);
             it->second.followed_topics.insert({topic, packet.sf});
-            // cout << "added topic " << topic << " with sf " <<  packet.sf <<"\n";
 
-            // cout << "showing user topics \n";
-            // for (auto i = it->second.followed_topics.begin(); i != it->second.followed_topics.end(); ++i) {
-            //     cout << i->first << " " << i->second << "\n";
-            // }
             break;
         }
     }
@@ -136,27 +133,11 @@ void exec_unsubscribe_action(ServerInfo* server, Message packet, int fd) {
             string topic(packet.topic);
             user.followed_topics.erase(topic);
 
-            // cout << "removed topic " << topic << " with sf " <<  packet.sf <<"\n";
-            // cout << "showing user topics \n";
-            // for (auto it = user.followed_topics.begin(); it != user.followed_topics.end(); ++it) {
-            //     cout << it->first << " " << it->second << "\n";
-            // }
             break;
         }
     }
 }
 
-// void exec_close_client(ServerInfo* server, int fd) {
-//     for (auto it = server->users.begin(); it != server->users.end(); ++it) {
-//         User user = it->second;
-//         if (user.file_descriptor.fd == fd) {
-//             cout << "Client " << user.id << " disconnected.\n";
-//             server->users.erase(it->first);
-//             close(fd);
-//             break;
-//         }
-//     }
-// }
 
 void recv_udp_send_clients (ServerInfo* server) {
     char buffer[1551];
@@ -192,8 +173,17 @@ void recv_udp_send_clients (ServerInfo* server) {
                 //user active
             } else if (user.status == 0 && user.followed_topics[string_topic] == 1) {
                 //store and forward
+                it->second.messages_to_send.push_back(packet);
             }
         }
+    }
+
+}
+
+void send_sf_messages (User* user) {
+    for (int i = 0; i < user->messages_to_send.size(); ++i) { 
+        Message packet = user->messages_to_send[i];
+        send(user->file_descriptor.fd, &packet, sizeof(packet), 0);
     }
 
 }

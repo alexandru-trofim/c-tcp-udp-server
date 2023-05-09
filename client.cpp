@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     /*Deactivate Nagle's alogrithm*/
     int flag = 1;
     int result = setsockopt(server_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int));
-    //
+
     setbuf(stdout, NULL);
 
     //set server address
@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
         die(__LINE__, "%s: Error connecting to server",argv[0]);
     }
 
+    /*Send id to server*/
     Message send_id;
     memset(&send_id, 0, sizeof(send_id));
     strncpy(send_id.id, id, sizeof(id));
@@ -43,7 +44,6 @@ int main(int argc, char *argv[]) {
     poll_fds.push_back({server_socket, POLLIN, 0});
     poll_fds.push_back({STDIN_FILENO, POLLIN, 0});
 
-    /*DO NOT FORGET TO CLOSE ITSELF WHEN RECEIVING TYPE 1*/
     while(true) {
         if (poll(poll_fds.data(),poll_fds.size(), -1) < 0) {
             die(__LINE__, "Poll error");
@@ -51,66 +51,36 @@ int main(int argc, char *argv[]) {
         for (auto &fd : poll_fds) {
             if (fd.revents & POLLIN) {
                 if (fd.fd == server_socket) {
-                    Message packet;
-                    int nbytes = recv(server_socket, &packet, sizeof(packet), 0);
-                    if (nbytes < sizeof(packet)) {
-                        die(__LINE__, "%s: Error packet dropped",argv[0]);
-                    }
+                    int res = process_packet_from_server(server_socket);
 
-                    if (packet.type_of_command == 1) {
-                        close(server_socket);
+                    if (res == -1) {
                         return 0;
-                    } else if (packet.type_of_command == 2) {
-                        //print message
-                        //handle packet
-                        print_received_packet(packet);
                     }
                     
                 } else if (fd.fd == STDIN_FILENO) {
+
                     Message packet;
                     string input;
 
                     getline(cin, input);
                     memset(&packet, 0, sizeof(packet));
 
-                    if (input.rfind("subscribe", 0) == 0) { // pos=0 limits the search to the prefix
-                        string topic = input.substr(10, input.size() - 10 - 2);
-                        if (topic.size() > 50) {
-                            die(__LINE__, "%s: Topic size is too big", argv[0]);
-                        }
-                        packet.type_of_command = 3;
-                        strcpy(packet.topic, topic.c_str());
+                    if (input.rfind("subscribe", 0) == 0) { 
 
-                        if (input[input.size() - 1] - '0' == 0)  {
-                            packet.sf = 0;
-                        } else if (input[input.size() - 1] - '0' == 1)  {
-                            packet.sf = 1;
-                        } else {
-                            die(__LINE__, "%s: SF other than 1/0", argv[0]);
-                        }
-
-                        send(server_socket, &packet, sizeof(packet), 0);
-
-                        cout << "Subscribed to topic.\n";
+                        subscribe_client(server_socket, input);
 
                     } else if (input.rfind("unsubscribe", 0) == 0) {
-                        string topic = input.substr(12, input.size() - 12);
-                        if (topic.size() > 10) {
-                            die(__LINE__, "%s: Topic size is too big", argv[0]);
-                        }
-                        packet.type_of_command = 4;
-                        strcpy(packet.topic, topic.c_str());
 
-                        send(server_socket, &packet, sizeof(packet), 0);
-
-                        cout << "Unsubscribed from topic.\n";
-
+                        unsubscribe_client(server_socket, input);
+                        
                     } else if (input.rfind("exit", 0) == 0) {
+
                         /*send exit packet*/
                         packet.type_of_command = 5;
                         send(server_socket, &packet, sizeof(packet), 0);
                         close(server_socket);
                         return 0;
+
                     } else {
                         die(__LINE__, "%s: Command other sub/unsub/exit", argv[0]);
                     }
@@ -120,5 +90,3 @@ int main(int argc, char *argv[]) {
     }
 
 }
-    // Inchidem conexiunea si socketul creat
-    // close(server_socket);

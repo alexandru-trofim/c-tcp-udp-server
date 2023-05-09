@@ -2,6 +2,7 @@
 
 using namespace std;
 
+
 int main (int argc, char* argv[]) {
 
     //allocate server on heap
@@ -9,14 +10,12 @@ int main (int argc, char* argv[]) {
 
     // we deactivate the buffering for low latency
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
-    //do not forget to deactivate naggle algo
-    //
-    setbuf(stdout, NULL);
 
     //get port from arguments
     if ((server.port = atoi(argv[1])) == 0) {
         die(__LINE__, "%s: Cannot convert cmd argument \"%s\" to port number", argv[0],argv[1]);
     }
+
     setup_server(&server);
 
     while (true) {
@@ -26,6 +25,7 @@ int main (int argc, char* argv[]) {
         }
 
         for (int i = 0; i < server.poll_fds.size(); ++i) {
+            
             pollfd fd = server.poll_fds[i];
 
             if (fd.revents & POLLIN) {
@@ -38,12 +38,10 @@ int main (int argc, char* argv[]) {
                 } else if (fd.fd == STDIN_FILENO){
                     string input;
                     getline(cin, input);
+
                     if (!input.compare("exit")) {
-                        cerr << "Trosha: closing sockets" << "\n";
                         close(server.tcp_socket);
                         close(server.udp_socket);
-                        //close all tcp clients
-                        // free everything
                         return 0;
                     }
                 } else {

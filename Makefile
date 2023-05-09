@@ -2,8 +2,11 @@
 
 
 server:
-	g++ server.cpp utils.cpp -o server
+	g++ server.cpp server_utils.cpp die.cpp -o server
 
 
 subscriber:
-	g++ client.cpp utils.cpp -o subscriber
+	g++ client.cpp client_utils.cpp die.cpp -o subscriber
+
+clean: 
+	rm server subscriber
